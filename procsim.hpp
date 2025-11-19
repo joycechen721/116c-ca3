@@ -30,21 +30,25 @@ typedef struct _proc_stats_t
     unsigned long cycle_count;
 } proc_stats_t;
 
-typedef struct _rs_entry_t
-{
+typedef struct _rs_entry_t {
     bool valid;
     proc_inst_t instruction;
     bool src1_ready;
     bool src2_ready;
-    int64_t src1_tag;
-    int64_t src2_tag;
-    bool ready_to_fire;
     bool fired;
     bool completed;
     bool state_updated;
-    bool tag_dispatched;
     uint64_t execute_cycles_left;
     uint64_t completed_cycle;
+    bool tag_dispatched;
+    
+    // Cycle tracking for output
+    uint64_t fetch_cycle;
+    uint64_t dispatch_cycle;
+    uint64_t schedule_cycle;
+    uint64_t execute_cycle;
+    uint64_t state_update_cycle;
+    uint64_t fired_cycle;
 } rs_entry_t;
 
 bool read_instruction(proc_inst_t* p_inst);
