@@ -15,8 +15,8 @@ typedef struct _proc_inst_t
 {
     uint32_t instruction_address;
     int32_t op_code;
-    int32_t dest_reg;
     int32_t src_reg[2];
+    int32_t dest_reg;
     uint64_t tag;
 } proc_inst_t;
 
@@ -30,32 +30,41 @@ typedef struct _proc_stats_t
     unsigned long cycle_count;
 } proc_stats_t;
 
-typedef struct dispatch_entry_t {
-    proc_inst_t instruction;
-    bool dispatched;
-} dispatch_entry_t;
-
-typedef struct rs_entry_t {
+typedef struct _rs_entry_t
+{
     bool valid;
     proc_inst_t instruction;
+    bool src1_ready;
+    bool src2_ready;
+    int64_t src1_tag;
+    int64_t src2_tag;
     bool ready_to_fire;
     bool fired;
     bool completed;
+    bool state_updated;
+    bool tag_dispatched;
     uint64_t execute_cycles_left;
+    uint64_t completed_cycle;
 } rs_entry_t;
 
 bool read_instruction(proc_inst_t* p_inst);
 
 void setup_proc(uint64_t r, uint64_t k0, uint64_t k1, uint64_t k2, uint64_t f);
 void run_proc(proc_stats_t* p_stats);
-void complete_proc(proc_stats_t* p_stats);
+void complete_proc(proc_stats_t *p_stats);
 
+// Stage functions
 void fetch_stage();
-void dispatch_stage();
-void schedule_stage();
-void execute_stage();
-void state_update_stage();
+void dispatch_stage_first_half();
+void dispatch_stage_second_half();
+void schedule_stage_first_half();
+void schedule_stage_second_half();
+void execute_stage_first_half();
+void execute_stage_second_half();
+void state_update_stage_first_half();
+void state_update_stage_second_half();
 
+// Utility functions
 bool all_rs_empty();
 
-#endif /* PROCSIM_HPP */
+#endif
