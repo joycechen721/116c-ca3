@@ -35,6 +35,8 @@ typedef struct _rs_entry_t {
     proc_inst_t instruction;
     bool src1_ready;
     bool src2_ready;
+    uint64_t src1_parent;
+    uint64_t src2_parent;
     bool fired;
     bool completed;
     bool state_updated;
