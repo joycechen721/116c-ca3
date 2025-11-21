@@ -58,7 +58,7 @@ uint64_t instructions_retired = 0;
 bool done_fetching = false;
 
 FILE* logging = fopen("log.txt", "w");
-FILE* output = fopen("output.txt", "w");
+FILE* output = fopen("output.output", "w");
 
 // Track instruction cycle info for output
 struct InstructionCycles {
@@ -146,7 +146,7 @@ void run_proc(proc_stats_t* p_stats)
         } while (firstHalf);
     }
 
-    complete_proc(p_stats);
+    // complete_proc(p_stats);
 }
 
 void complete_proc(proc_stats_t *p_stats) 
