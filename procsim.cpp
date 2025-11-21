@@ -30,7 +30,7 @@ struct ResultBus {
 std::vector<ResultBus> result_buses;
 
 // instructions completed and waiting for state update
-std::vector<std::pair<uint32_t, rs_entry_t*>> waiting_instructions; // (op_code, entry)
+std::vector<std::pair<uint32_t, rs_entry_t*>> completed_instructions; // (op_code, entry)
 
 const int32_t NUM_REGISTERS = 128;
 // the latest dispatched writer to this register, and whether the register is ready
@@ -53,6 +53,7 @@ uint64_t current_cycle = 0;
 // statistics tracking
 uint64_t max_disp_size = 0;
 uint64_t total_disp_size = 0;
+uint64_t instructions_fired = 0;
 uint64_t instructions_retired = 0;
 bool done_fetching = false;
 
@@ -79,9 +80,16 @@ void setup_proc(uint64_t r, uint64_t k0, uint64_t k1, uint64_t k2, uint64_t f)
 
     dispatch_queue.clear();
     reservation_station.clear();
-    waiting_instructions.clear();
+    completed_instructions.clear();
 
     fprintf(logging, "CYCLE\tOPERATION\tINSTRUCTION\n");
+    fprintf(output, "Processor Settings\n");
+    fprintf(output, "R: %llu\n", r);
+    fprintf(output, "k0: %llu\n", k0);
+    fprintf(output, "k1: %llu\n", k1);
+    fprintf(output, "k2: %llu\n", k2);
+    fprintf(output, "F: %llu\n", f);
+    fprintf(output, "\n");
 
     uint64_t rs_size = 2 * (K0_FU_COUNT + K1_FU_COUNT + K2_FU_COUNT);
     reservation_station.resize(rs_size);
@@ -111,6 +119,7 @@ void setup_proc(uint64_t r, uint64_t k0, uint64_t k1, uint64_t k2, uint64_t f)
     current_cycle = 0;
     max_disp_size = 0;
     total_disp_size = 0;
+    instructions_fired = 0;
     instructions_retired = 0;
     done_fetching = false;
     instruction_cycles.clear();
@@ -147,8 +156,10 @@ void complete_proc(proc_stats_t *p_stats)
 
     if (current_cycle > 0) {
         p_stats->avg_inst_retired = (double)instructions_retired / (double)current_cycle;
+        p_stats->avg_inst_fired = (double)instructions_fired / (double)current_cycle;
     } else {
         p_stats->avg_inst_retired = 0.0;
+        p_stats->avg_inst_fired = 0.0;
     }
 
     p_stats->max_disp_size = max_disp_size;
@@ -171,6 +182,13 @@ void complete_proc(proc_stats_t *p_stats)
                (unsigned long long)cycles.execute, 
                (unsigned long long)cycles.state_update);
     }
+    fprintf(output, "\nProcessor stats:\n");
+	fprintf(output, "Total instructions: %lu\n", p_stats->retired_instruction);
+    fprintf(output, "Avg Dispatch queue size: %f\n", p_stats->avg_disp_size);
+    fprintf(output, "Maximum Dispatch queue size: %lu\n", p_stats->max_disp_size);
+    fprintf(output, "Avg inst fired per cycle: %f\n", p_stats->avg_inst_fired);
+	fprintf(output, "Avg inst retired per cycle: %f\n", p_stats->avg_inst_retired);
+	fprintf(output, "Total run time (cycles): %lu\n", p_stats->cycle_count);
 }
 
 void fetch_stage(bool firstHalf) {
@@ -295,6 +313,7 @@ void schedule_stage(bool firstHalf) {
                 // Reserve the FU
                 (*counter)++;
                 entry->fired = true;
+                instructions_fired++;
 
                 fprintf(logging, "%llu\tSCHEDULED\t%llu\n", current_cycle, entry->instruction.tag + 1);
                 // Reference sets execute cycle to current + 1 when scheduled
@@ -340,13 +359,13 @@ void execute_stage(bool firstHalf) {
 
         // Add to waiting instructions queue
         for (auto& pair : executed_this_cycle) {
-            waiting_instructions.push_back(pair.second);
+            completed_instructions.push_back(pair.second);
         }
 
         // Broadcast on result buses (oldest first)
-        auto w = waiting_instructions.begin();
+        auto w = completed_instructions.begin();
         for (auto& bus : result_buses) {
-            if (w == waiting_instructions.end()) break;
+            if (w == completed_instructions.end()) break;
 
             uint32_t op_code = w->first;
             rs_entry_t* entry = w->second;
@@ -373,7 +392,7 @@ void execute_stage(bool firstHalf) {
             entry->state_updated = true;
             entry->state_update_cycle = current_cycle;
 
-            w = waiting_instructions.erase(w);
+            w = completed_instructions.erase(w);
         }
 
         // Clear buses that weren't used this cycle
@@ -398,16 +417,6 @@ void state_update_stage(bool firstHalf) {
     }
     // No first half actions
 }
-
-// Wrapper functions for compatibility
-void state_update_stage_first_half() { state_update_stage(true); }
-void state_update_stage_second_half() { state_update_stage(false); }
-void execute_stage_first_half() { execute_stage(true); }
-void execute_stage_second_half() { execute_stage(false); }
-void schedule_stage_first_half() { schedule_stage(true); }
-void schedule_stage_second_half() { schedule_stage(false); }
-void dispatch_stage_first_half() { dispatch_stage(true); }
-void dispatch_stage_second_half() { dispatch_stage(false); }
 
 void fetch_stage() {
     fetch_stage(false);  // Original only had second half
