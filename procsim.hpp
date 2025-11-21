@@ -60,15 +60,11 @@ void run_proc(proc_stats_t* p_stats);
 void complete_proc(proc_stats_t *p_stats);
 
 // Stage functions
-void fetch_stage();
-void dispatch_stage_first_half();
-void dispatch_stage_second_half();
-void schedule_stage_first_half();
-void schedule_stage_second_half();
-void execute_stage_first_half();
-void execute_stage_second_half();
-void state_update_stage_first_half();
-void state_update_stage_second_half();
+void fetch_stage(bool firstHalf);
+void dispatch_stage(bool firstHalf);
+void schedule_stage(bool firstHalf);
+void execute_stage(bool firstHalf);
+void state_update_stage(bool firstHalf);
 
 // Utility functions
 bool all_rs_empty();
